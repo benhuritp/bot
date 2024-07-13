@@ -1,6 +1,5 @@
 import { Telegraf, Markup } from "telegraf";
 import { config } from "./config.js";
-import axios from "axios";
 // import mongoose from "mongoose";
 // import dbConnect from "./dbConnect.js";
 
