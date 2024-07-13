@@ -32,7 +32,7 @@ const urlPattern = /^(https?:\/\/[^\s/$.?#].[^\s]*)$/;
 let sourceLink = 'https://example.com/source';
 let showLinks = false; // Переменная для отслеживания состояния отображения ссылок
 
-const adminUsername = 'thebreot';
+const adminUsername = 'Kopylash8';
 
 let welcomeText = 'Ласкаво просимо! Наразі трансляцій відсутні.';
 let StreamsText = 'Ласкаво просимо! Щоб дивитись пряму трансляцію матчу, потрібно підписатись на всі канали нижче:';
