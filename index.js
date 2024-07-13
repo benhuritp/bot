@@ -1,5 +1,6 @@
 import { Telegraf, Markup } from "telegraf";
 import { config } from "./config.js";
+import axios from "axios";
 // import mongoose from "mongoose";
 // import dbConnect from "./dbConnect.js";
 
@@ -12,16 +13,15 @@ let buttonData1 = {
     url: 'https://example.com/1'
 };
 
+let sourceText = 'Всі умови виконано і вам надано доступ до безкоштовної трансляції яку можете дивитись тут:' 
+
 let buttonData2 = {
     text: 'Кнопка 2',
     url: 'https://example.com/2'
 };
 
 let linkData = [
-    { text: 'Ссылка 1', url: 'https://t.me/subertestchannel' },
-    { text: 'Ссылка 2', url: 'https://t.me/subertestchannel2' },
-
-
+    { text: 'Ссылка 1', url: '-1002244603754' },
 ];
 
 let showButton1 = true;
@@ -35,61 +35,84 @@ let showLinks = false; // Переменная для отслеживания �
 const adminUsername = 'Kopylash8';
 
 let welcomeText = 'Ласкаво просимо! Наразі трансляцій відсутні.';
-let StreamsText = 'Ласкаво просимо! Щоб дивитись пряму трансляцію матчу, потрібно підписатись на всі канали нижче:';
-
+let LinksText = 'Ласкаво просимо! Щоб дивитись пряму трансляцію матчу, потрібно підписатись на всі канали нижче:';
+let sourceLinkText = "Дивитися трансляцiю"
 
 function isAdmin(username) {
     return username == adminUsername;
 }
 // Функция для извлечения username канала из URL
-function extractUsernameFromUrl(url) {
+function extractChatIdFromUrl(url) {
     const match = url.match(/t\.me\/([^\s/]+)/);
     if (match && match[1]) {
-        return '@' + match[1];
+        console.log(match[1]);
+        return match[1];
     }
     return null;
 }
 
 // Функция для проверки подписки пользователя на все каналы
+
+// Функция для проверки подписки пользователя на все каналы
 async function checkSubscriptions(ctx) {
-    const user = ctx.from.id; // Получаем ID пользователя (можно использовать другие данные для проверки подписки)
+    const user = ctx.from.id; // Получаем ID пользователя
+
+    if (linkData.length === 0) {
+        // Если ссылок нет
+        ctx.reply("Ссылок нет.");
+        return;
+    }
 
     const promises = linkData.map(async (link) => {
-        const channelUsername = extractUsernameFromUrl(link.url);
-        if (channelUsername) {
+        let chatId;
+        console.log(link.url);
+        if (link.url.startsWith('-')) {
+            chatId = link.url;
+        } else {
+            chatId = extractChatIdFromUrl(link.url);
+        }
+
+        if (chatId) {
             try {
-                const chatMember = await ctx.telegram.getChatMember(channelUsername, user);
-                // Проверяем статус участника чата
+                let chatMember;
+                if (chatId.startsWith('-')) {
+                    chatMember = await ctx.telegram.getChatMember(chatId, user);
+                } else {
+                    chatMember = await ctx.telegram.getChatMember(`@${chatId}`, user);
+                }
+
                 if (chatMember && ['member', 'administrator', 'creator'].includes(chatMember.status)) {
                     return true; // Пользователь подписан на канал
                 } else {
                     return false; // Пользователь не подписан на канал
                 }
             } catch (error) {
-                console.error(`Ошибка при проверке подписки на канал ${channelUsername}:`, error);
+                console.error(`Ошибка при проверке подписки на канал ${chatId}:`, error);
                 return false; // Ошибка при проверке подписки
             }
         } else {
-            return false; // Если не удалось извлечь username из URL
+            console.error(`Не удалось извлечь username или ID из URL: ${link.url}`);
+            return false; // Если не удалось извлечь username или ID из URL
         }
     });
 
     const results = await Promise.all(promises);
 
     if (results.every(subscribed => subscribed)) {
-        // Создаем массив кнопок для подписанных каналов
-
-        // Отправляем сообщение с кнопками
-        ctx.reply('Всі умови виконано і вам надано доступ до безкоштовної трансляції яку можете дивитись тут:', Markup.inlineKeyboard([Markup.button.url('Дивитися трансляцію', sourceLink)]));
+        ctx.reply(sourceText, Markup.inlineKeyboard([Markup.button.url(sourceLinkText, sourceLink)]));
     } else {
         ctx.reply('Будь ласка, підпишіться на всі канали з посилань для продовження.');
     }
 }
+
+
 function isValidUrl(string) {
     try {
         new URL(string);
+        console.log(true);
         return true;
     } catch (_) {
+        console.log(false);
         return false;
     }
 }
@@ -112,7 +135,7 @@ bot.command('setwelcometext', (ctx) => {
     }
 });
 
-bot.command('setstreamtext', (ctx) => {
+bot.command('setlinkstext', (ctx) => {
     if (isAdmin(ctx.message.from.username)) {
         const args = ctx.message.text.split(' ').slice(1);
         if (args.length >= 1) {
@@ -120,10 +143,10 @@ bot.command('setstreamtext', (ctx) => {
             if (text.startsWith('<') && text.endsWith('>')) {
                 text = text.slice(1, -1); // Убираем символы <> из текста
             }
-            StreamsText = text;
-            ctx.reply(`Текст о трансляціях успішно оновлено: ${StreamsText}`);
+            LinksText = text;
+            ctx.reply(`Текст о трансляціях успішно оновлено: ${LinksText}`);
         } else {
-            ctx.reply(`Используйте команду в формате: /setstreamtext <текст>`);
+            ctx.reply(`Используйте команду в формате: /setlinkstext <текст>`);
         }
     } else {
         ctx.reply('У вас нет прав для выполнения этой команды.');
@@ -140,6 +163,39 @@ bot.command('setsource', (ctx) => {
             ctx.reply(`Ссылка на трансляцию успешно обновлена: ${sourceLink}`);
         } else {
             ctx.reply('Некорректная ссылка. Используйте правильный URL.');
+        }
+    } else {
+        ctx.reply('У вас нет прав для выполнения этой команды.');
+    }
+});
+
+bot.command('setsourcetext', (ctx) => {
+    if (isAdmin(ctx.message.from.username)) {
+        const newText = ctx.message.text.split(' ').slice(1).join(' ');
+        
+        if (newText) {
+            const cleanedText = newText.replace(/[<>]/g, ''); // Убираем символы <>
+            sourceText = cleanedText;
+            ctx.reply(`Текст успешно обновлен. Новый текст: ${sourceText}`);
+        } else {
+            ctx.reply(`Пример команды (обновляет текст): /setsourcetext <Новый текст для сообщения>`);
+        }
+    } else {
+        ctx.reply('У вас нет прав для выполнения этой команды.');
+    }
+});
+
+
+bot.command('setsourcelinktext', (ctx) => {
+    if (isAdmin(ctx.message.from.username)) {
+        const newText = ctx.message.text.split(' ').slice(1).join(' ');
+        
+        if (newText) {
+            const cleanedText = newText.replace(/[<>]/g, ''); // Убираем символы <>
+            sourceLinkText = cleanedText;
+            ctx.reply(`Текст успешно обновлен. Новый текст: ${sourceLinkText}`);
+        } else {
+            ctx.reply(`Пример команды (обновляет текст): /setsourcelinktext <Новый текст для ссылки>`);
         }
     } else {
         ctx.reply('У вас нет прав для выполнения этой команды.');
@@ -209,7 +265,9 @@ async function setCommandsByAdminStatus(ctx) {
                 { command: 'setbutton1', description: 'Настроить кнопку 1' },
                 { command: 'setbutton2', description: 'Настроить кнопку 2' },
                 { command: 'setwelcometext', description: 'Установить текст приветствия' },
-                { command: 'setstreamtext', description: 'Установить текст c ссылками' },
+                { command: 'setlinkstext', description: 'Установить текст c ссылками' },
+                { command: 'setsourcetext', description: 'Установить текст для сообщения' },
+                { command: 'setsourcelinktext', description: 'Установить текст для ссылки на трансляцию' },
                 { command: 'togglelinks', description: 'Включить/выключить отображение ссылок' },
                 { command: 'togglebuttons', description: 'Включить/выключить отображение кнопки' },
                 { command: 'help', description: 'Помощь' }
@@ -240,20 +298,47 @@ async function handleStartCommand(ctx) {
     }
 }
 
-// Обработка команды /start
-bot.command('start', (ctx) => {
-    handleStartCommand(ctx);
-    const buttons = [
-        Markup.button.url(buttonData1.text, buttonData1.url),
-        Markup.button.url(buttonData2.text, buttonData2.url)
-    ];
+bot.command('start', async (ctx) => {
+    await handleStartCommand(ctx);
 
     if (showLinks) {
-        const linkButtons = linkData.map(link => Markup.button.url(link.text, link.url));
-        const inlineKeyboard = linkButtons.map(button => [button]); // Каждую ссылку помещаем в отдельную строку
+        const updatedLinkData = [];
+        const linkButtons = await Promise.all(
+            linkData.map(async (link) => {
+                if (link.url.startsWith('-')) {
+                    try {
+                        const chat = await ctx.telegram.getChat(link.url);
+                        if (chat.invite_link) {
+                            return Markup.button.url(link.text, chat.invite_link);
+                        } else {
+                            // Если у чата нет invite_link, использовать другой метод получения ссылки или обработать ошибку
+                            console.error(`No invite link found for chat ID ${link.url}`);
+                            return Markup.button.url(link.text, `https://t.me/${chat.username}`);
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching chat info for ${link.url}:`, error);
+                        // Обработка ошибки: можно удалить ссылку из списка
+                        console.error(`Removing link due to error: ${link.text} (${link.url})`);
+                        return null; // Возвращаем null в случае ошибки
+                    }
+                } else {
+                    return Markup.button.url(link.text, link.url);
+                }
+            })
+        );
+
+        linkButtons.forEach((button, index) => {
+            if (button !== null) {
+                updatedLinkData.push(linkData[index]);
+            }
+        });
+
+        linkData = updatedLinkData; // Обновляем linkData только с корректными ссылками
+
+        const inlineKeyboard = linkButtons.filter(button => button !== null).map(button => [button]); // Каждую ссылку помещаем в отдельную строку
         const readyButton = Markup.button.callback('Готово ✅', 'ready');
         inlineKeyboard.push([readyButton]); // Добавляем кнопки "Меню" и "Готово" в отдельную строку
-        ctx.reply(StreamsText, Markup.inlineKeyboard(inlineKeyboard));
+        ctx.reply(LinksText, Markup.inlineKeyboard(inlineKeyboard));
     } else {
         let buttonsToShow = [];
         if (showButton1) buttonsToShow.push(buttonData1);
@@ -264,26 +349,6 @@ bot.command('start', (ctx) => {
     }
 });
 
-
-bot.command('setlink', (ctx) => {
-    if (isAdmin(ctx.message.from.username)) {
-        const args = ctx.message.text.split(' ').slice(1);
-        const index = parseInt(args[0], 10) - 1;
-        const textWithSymbols = args.slice(1, -1).join(' '); // Весь текст, кроме последнего аргумента (ссылки) с символами <>
-        const url = args[args.length - 1]; // Последний аргумент (ссылка)
-
-        if (!isNaN(index) && index >= 0 && index < linkData.length && args.length >= 3 && isValidUrl(url)) {
-            const text = textWithSymbols.replace(/[<>]/g, ''); // Убираем символы <>
-            linkData[index].text = text;
-            linkData[index].url = url;
-            ctx.reply(`Данные ссылки ${index + 1} успешно обновлены. Текст: ${text}, Ссылка: ${linkData[index].url}`);
-        } else {
-            ctx.reply(`Пример команды (меняет первую ссылку) : /setlink 1 <текст ссылки> https://ссылка`);
-        }
-    } else {
-        ctx.reply('У вас нет прав для выполнения этой команды.');
-    }
-});
 
 bot.command('deletelink', (ctx) => {
     if (isAdmin(ctx.message.from.username)) {
@@ -300,31 +365,57 @@ bot.command('deletelink', (ctx) => {
         ctx.reply('У вас нет прав для выполнения этой команды.');
     }
 });
-bot.command('addlink', (ctx) => {
+bot.command('setlink', (ctx) => {
     if (isAdmin(ctx.message.from.username)) {
         const args = ctx.message.text.split(' ').slice(1);
-        if (args.length >= 2) {
-            const textWithSymbols = args.slice(0, -1).join(' '); // Весь текст, кроме последнего аргумента (ссылки) с символами <>
-            const url = args[args.length - 1]; // Последний аргумент (ссылка)
+        const index = parseInt(args[0], 10) - 1;
+        const textWithSymbols = args.slice(1, -1).join(' '); // Весь текст, кроме последнего аргумента (ссылки или чат айди)
+        const identifier = args[args.length - 1]; // Последний аргумент (ссылка или чат айди)
 
-            if (isValidUrl(url) && url.includes('t.me')) {
+        if (!isNaN(index) && index >= 0 && index < linkData.length && args.length >= 3) {
+            if (isValidUrl(identifier) || (identifier.startsWith('-') && /^[0-9\-]+$/.test(identifier))) {
                 const text = textWithSymbols.replace(/[<>]/g, ''); // Убираем символы <>
-                const newLink = {
-                    text: text,
-                    url: url
-                };
-                linkData.push(newLink);
-                ctx.reply(`Ссылка успешно добавлена. Текст: ${text}, Ссылка: ${url}`);
+                linkData[index].text = text;
+                linkData[index].url = identifier;
+                ctx.reply(`Данные ссылки ${index + 1} успешно обновлены. Текст: ${text}, Ссылка/Чат ID: ${linkData[index].url}`);
             } else {
-                ctx.reply('Неверный формат ссылки. Пожалуйста, используйте корректный URL на Telegram (например, https://t.me/ссылка).');
+                ctx.reply(`Неверный формат ссылки или Chat ID. Пожалуйста, используйте корректный URL на Telegram (например, https://t.me/ссылка) или Chat ID (например, -1002126756144).`);
             }
         } else {
-            ctx.reply(`Пример команды(добавляем ссылку): /addlink <текст ссылки> https://t.me/ссылка`);
+            ctx.reply(`Пример команды (меняет первую ссылку): /setlink 1 <текст ссылки> https://ссылка или /setlink 1 <текст ссылки> -1002126756144`);
         }
     } else {
         ctx.reply('У вас нет прав для выполнения этой команды.');
     }
 });
+
+bot.command('addlink', (ctx) => {
+    if (isAdmin(ctx.message.from.username)) {
+        const args = ctx.message.text.split(' ').slice(1);
+        if (args.length >= 2) {
+            const textWithSymbols = args.slice(0, -1).join(' '); // Весь текст, кроме последнего аргумента (ссылки/чат айди) с символами <>
+            const identifier = args[args.length - 1]; // Последний аргумент (ссылка или чат айди)
+            const text = textWithSymbols.replace(/[<>]/g, ''); // Убираем символы <>
+            
+            // Проверка на валидность URL или Chat ID
+            if (isValidUrl(identifier) || (identifier.startsWith('-') && /^[0-9\-]+$/.test(identifier))) {
+                const newLink = {
+                    text: text,
+                    url: identifier
+                };
+                linkData.push(newLink);
+                ctx.reply(`Ссылка успешно добавлена. Текст: ${text}, Ссылка/Чат ID: ${identifier}`);
+            } else {
+                ctx.reply('Неверный формат ссылки или Chat ID. Пожалуйста, используйте корректный URL на Telegram (например, https://t.me/ссылка) или Chat ID (например, -1002126756144).');
+            }
+        } else {
+            ctx.reply(`Пример команды(добавляем ссылку): /addlink <текст ссылки> https://t.me/ссылка или /addlink <текст ссылки> -1002126756144`);
+        }
+    } else {
+        ctx.reply('У вас нет прав для выполнения этой команды.');
+    }
+});
+
 bot.action('ready', async (ctx) => {
     await checkSubscriptions(ctx);
     await ctx.answerCbQuery();
@@ -368,7 +459,6 @@ bot.command('help', (ctx) => {
     let helpText = 'Доступные команды:\n\n';
 
     if (isAdminUser) {
-        helpText += '/start - Запустить бота\n';
         helpText += '/addlink <текст> https://сслыка - Добавить новую ссылку\n';
         helpText += '/setlink 1 <текст> https://сслыка - Установить текст и ссылку для определенной кнопки(в данном случае для первой)\n';
         helpText += '/deletelink 1 - Удалить ссылку по её номеру (в данном случае первую)\n';
@@ -376,9 +466,12 @@ bot.command('help', (ctx) => {
         helpText += '/setbutton1 <текст> https://сслыка - Настроить первую кнопку\n';
         helpText += '/setbutton2 <текст> https://сслыка - Настроить вторую кнопку\n';
         helpText += '/setwelcometext <текст> - Установить текст приветствия\n';
-        helpText += '/setstreamtext <текст> - Установить текст о отсутствии трансляций\n';
+        helpText += '/setlinkstext <текст> - Установить текст c cылками\n';
+        helpText += '/setsourcetext <текст> - Установить текст для сообщения\n';
+        helpText += '/setsourcelinktext <текст> - Установить текст для ссылки\n';
         helpText += '/togglelinks - Включить/выключить отображение ссылок\n';
-        helpText += '/togglebuttons - Включить/выключить отображение кнопки \n';
+        helpText += '/togglebuttons - Включить/выключить отображение кнопки\n';
+        helpText += '/help - Помощь\n';
     } else {
         helpText += '/start - Запустить бота\n';
     }
