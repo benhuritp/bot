@@ -12,7 +12,7 @@ let buttonData1 = {
     url: 'https://example.com/1'
 };
 
-let sourceText = 'Всі умови виконано і вам надано доступ до безкоштовної трансляції яку можете дивитись тут:' 
+let sourceText = 'Всі умови виконано і вам надано доступ до безкоштовної трансляції яку можете дивитись тут:'
 
 let buttonData2 = {
     text: 'Кнопка 2',
@@ -20,7 +20,16 @@ let buttonData2 = {
 };
 
 let linkData = [
-    { text: 'Тестовый канал', url: '-1002244603754',value:"https://t.me/+2a1XThXOFv00Zjgy" },
+    {
+        text: 'Спортивні новини ⚽️🇺🇦',
+        url: '-1002126756144',
+        value: 'https://t.me/+6bmu-EYcsollZmIy'
+    },
+    {
+        text: 'Base of Ukrainian sport',
+        url: '-1001797727702',
+        value: 'https://t.me/+W0wPCcZOJs1lNTli'
+    },
 ];
 
 let showButton1 = true;
@@ -31,7 +40,7 @@ const urlPattern = /^(https?:\/\/[^\s/$.?#].[^\s]*)$/;
 let sourceLink = 'https://example.com/source';
 let showLinks = false; // Переменная для отслеживания состояния отображения ссылок
 
-const adminUsername = 'thebreot';
+const adminUsername = 'Kopylash8';
 
 let welcomeText = 'Ласкаво просимо! Наразі трансляцій відсутні.';
 let LinksText = 'Ласкаво просимо! Щоб дивитись пряму трансляцію матчу, потрібно підписатись на всі канали нижче:';
@@ -168,7 +177,7 @@ bot.command('setsource', (ctx) => {
 bot.command('setsourcetext', (ctx) => {
     if (isAdmin(ctx.message.from.username)) {
         const newText = ctx.message.text.split(' ').slice(1).join(' ');
-        
+
         if (newText) {
             const cleanedText = newText.replace(/[<>]/g, ''); // Убираем символы <>
             sourceText = cleanedText;
@@ -185,7 +194,7 @@ bot.command('setsourcetext', (ctx) => {
 bot.command('setsourcelinktext', (ctx) => {
     if (isAdmin(ctx.message.from.username)) {
         const newText = ctx.message.text.split(' ').slice(1).join(' ');
-        
+
         if (newText) {
             const cleanedText = newText.replace(/[<>]/g, ''); // Убираем символы <>
             sourceLinkText = cleanedText;
@@ -350,9 +359,9 @@ bot.command('deletelink', (ctx) => {
 bot.command('addlink', (ctx) => {
     if (isAdmin(ctx.message.from.username)) {
         const commandText = ctx.message.text;
-        
+
         // Регулярное выражение для первого случая: /addlink <Текст> <ID группы> <Ссылка>
-        const regex1 = /^\/addlink <(.+?)> (-?\d+) (.+)$/; 
+        const regex1 = /^\/addlink <(.+?)> (-?\d+) (.+)$/;
         // Регулярное выражение для второго случая: /addlink <Текст> <Ссылка>
         const regex2 = /^\/addlink <(.+?)> (.+)$/;
 
