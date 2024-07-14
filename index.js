@@ -20,7 +20,7 @@ let buttonData2 = {
 };
 
 let linkData = [
-    { text: 'Ссылка 1', url: '-1002192351032',value:"https://t.me/+A-lSyUwel6c2NmVi" },
+    { text: 'Спортивні новини ⚽️🇺🇦', url: '-1002126756144',value:"https://t.me/+BqqVsJdVDWo4YWMy" },
 ];
 
 let showButton1 = true;
@@ -99,7 +99,7 @@ async function checkSubscriptions(ctx) {
     if (results.every(subscribed => subscribed)) {
         ctx.reply(sourceText, Markup.inlineKeyboard([Markup.button.url(sourceLinkText, sourceLink)]));
     } else {
-        ctx.reply('Будь ласка, підпишіться на всі канали з посилань для продовження.');
+        ctx.reply('Підпишіться на всі канали зі списку вище щоб отримати доступ.');
     }
 }
 
