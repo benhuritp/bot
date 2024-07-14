@@ -20,7 +20,7 @@ let buttonData2 = {
 };
 
 let linkData = [
-    { text: 'Спортивні новини ⚽️🇺🇦', url: '-1002126756144',value:"https://t.me/+BqqVsJdVDWo4YWMy" },
+    { text: 'Тестовый канал', url: '-1002244603754',value:"https://t.me/+2a1XThXOFv00Zjgy" },
 ];
 
 let showButton1 = true;
@@ -31,7 +31,7 @@ const urlPattern = /^(https?:\/\/[^\s/$.?#].[^\s]*)$/;
 let sourceLink = 'https://example.com/source';
 let showLinks = false; // Переменная для отслеживания состояния отображения ссылок
 
-const adminUsername = 'Kopylash8';
+const adminUsername = 'thebreot';
 
 let welcomeText = 'Ласкаво просимо! Наразі трансляцій відсутні.';
 let LinksText = 'Ласкаво просимо! Щоб дивитись пряму трансляцію матчу, потрібно підписатись на всі канали нижче:';
