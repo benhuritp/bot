@@ -20,7 +20,7 @@ let buttonData2 = {
 };
 
 let linkData = [
-    { text: 'Ссылка 1', url: '-1002244603754' },
+    { text: 'Ссылка 1', url: '-1002192351032',value:"https://t.me/+A-lSyUwel6c2NmVi" },
 ];
 
 let showButton1 = true;
@@ -44,7 +44,6 @@ function isAdmin(username) {
 function extractChatIdFromUrl(url) {
     const match = url.match(/t\.me\/([^\s/]+)/);
     if (match && match[1]) {
-        console.log(match[1]);
         return match[1];
     }
     return null;
@@ -64,7 +63,6 @@ async function checkSubscriptions(ctx) {
 
     const promises = linkData.map(async (link) => {
         let chatId;
-        console.log(link.url);
         if (link.url.startsWith('-')) {
             chatId = link.url;
         } else {
@@ -75,6 +73,7 @@ async function checkSubscriptions(ctx) {
             try {
                 let chatMember;
                 if (chatId.startsWith('-')) {
+                    // console.log( await ctx.telegram.getChatMember("-1002192351032", user));
                     chatMember = await ctx.telegram.getChatMember(chatId, user);
                 } else {
                     chatMember = await ctx.telegram.getChatMember(`@${chatId}`, user);
@@ -108,10 +107,8 @@ async function checkSubscriptions(ctx) {
 function isValidUrl(string) {
     try {
         new URL(string);
-        console.log(true);
         return true;
     } catch (_) {
-        console.log(false);
         return false;
     }
 }
@@ -258,7 +255,6 @@ async function setCommandsByAdminStatus(ctx) {
             await bot.telegram.setMyCommands([
                 { command: 'start', description: 'Запустить бота' },
                 { command: 'addlink', description: 'Добавить ссылку' },
-                { command: 'setlink', description: 'Изменить определенную ссылку' },
                 { command: 'deletelink', description: 'Удалить ссылку' },
                 { command: 'setsource', description: 'Установить ссылку на трансляцию' },
                 { command: 'setbutton1', description: 'Настроить кнопку 1' },
@@ -304,24 +300,11 @@ bot.command('start', async (ctx) => {
         const updatedLinkData = [];
         const linkButtons = await Promise.all(
             linkData.map(async (link) => {
-                if (link.url.startsWith('-')) {
-                    try {
-                        const chat = await ctx.telegram.getChat(link.url);
-                        if (chat.invite_link) {
-                            return Markup.button.url(link.text, chat.invite_link);
-                        } else {
-                            // Если у чата нет invite_link, использовать другой метод получения ссылки или обработать ошибку
-                            console.error(`No invite link found for chat ID ${link.url}`);
-                            return Markup.button.url(link.text, `https://t.me/${chat.username}`);
-                        }
-                    } catch (error) {
-                        console.error(`Error fetching chat info for ${link.url}:`, error);
-                        // Обработка ошибки: можно удалить ссылку из списка
-                        console.error(`Removing link due to error: ${link.text} (${link.url})`);
-                        return null; // Возвращаем null в случае ошибки
-                    }
+                if (link.value) {
+                    return Markup.button.url(link.text, link.value); // Используем value для кнопки
                 } else {
-                    return Markup.button.url(link.text, link.url);
+                    console.error(`No value found for link ${link.text}`);
+                    return null; // Возвращаем null в случае отсутствия value
                 }
             })
         );
@@ -336,7 +319,7 @@ bot.command('start', async (ctx) => {
 
         const inlineKeyboard = linkButtons.filter(button => button !== null).map(button => [button]); // Каждую ссылку помещаем в отдельную строку
         const readyButton = Markup.button.callback('Готово ✅', 'ready');
-        inlineKeyboard.push([readyButton]); // Добавляем кнопки "Меню" и "Готово" в отдельную строку
+        inlineKeyboard.push([readyButton]); // Добавляем кнопку "Готово" в отдельную строку
         ctx.reply(LinksText, Markup.inlineKeyboard(inlineKeyboard));
     } else {
         let buttonsToShow = [];
@@ -347,7 +330,6 @@ bot.command('start', async (ctx) => {
         ctx.reply(welcomeText, Markup.inlineKeyboard([buttonMarkup]));
     }
 });
-
 
 bot.command('deletelink', (ctx) => {
     if (isAdmin(ctx.message.from.username)) {
@@ -364,56 +346,63 @@ bot.command('deletelink', (ctx) => {
         ctx.reply('У вас нет прав для выполнения этой команды.');
     }
 });
-bot.command('setlink', (ctx) => {
-    if (isAdmin(ctx.message.from.username)) {
-        const args = ctx.message.text.split(' ').slice(1);
-        const index = parseInt(args[0], 10) - 1;
-        const textWithSymbols = args.slice(1, -1).join(' '); // Весь текст, кроме последнего аргумента (ссылки или чат айди)
-        const identifier = args[args.length - 1]; // Последний аргумент (ссылка или чат айди)
-
-        if (!isNaN(index) && index >= 0 && index < linkData.length && args.length >= 3) {
-            if (isValidUrl(identifier) || (identifier.startsWith('-') && /^[0-9\-]+$/.test(identifier))) {
-                const text = textWithSymbols.replace(/[<>]/g, ''); // Убираем символы <>
-                linkData[index].text = text;
-                linkData[index].url = identifier;
-                ctx.reply(`Данные ссылки ${index + 1} успешно обновлены. Текст: ${text}, Ссылка/Чат ID: ${linkData[index].url}`);
-            } else {
-                ctx.reply(`Неверный формат ссылки или Chat ID. Пожалуйста, используйте корректный URL на Telegram (например, https://t.me/ссылка) или Chat ID (например, -1002126756144).`);
-            }
-        } else {
-            ctx.reply(`Пример команды (меняет первую ссылку): /setlink 1 <текст ссылки> https://ссылка или /setlink 1 <текст ссылки> -1002126756144`);
-        }
-    } else {
-        ctx.reply('У вас нет прав для выполнения этой команды.');
-    }
-});
 
 bot.command('addlink', (ctx) => {
     if (isAdmin(ctx.message.from.username)) {
-        const args = ctx.message.text.split(' ').slice(1);
-        if (args.length >= 2) {
-            const textWithSymbols = args.slice(0, -1).join(' '); // Весь текст, кроме последнего аргумента (ссылки/чат айди) с символами <>
-            const identifier = args[args.length - 1]; // Последний аргумент (ссылка или чат айди)
-            const text = textWithSymbols.replace(/[<>]/g, ''); // Убираем символы <>
-            
-            // Проверка на валидность URL или Chat ID
-            if (isValidUrl(identifier) || (identifier.startsWith('-') && /^[0-9\-]+$/.test(identifier))) {
-                const newLink = {
-                    text: text,
-                    url: identifier
-                };
-                linkData.push(newLink);
-                ctx.reply(`Ссылка успешно добавлена. Текст: ${text}, Ссылка/Чат ID: ${identifier}`);
-            } else {
-                ctx.reply('Неверный формат ссылки или Chat ID. Пожалуйста, используйте корректный URL на Telegram (например, https://t.me/ссылка) или Chat ID (например, -1002126756144).');
+        const commandText = ctx.message.text;
+        
+        // Регулярное выражение для первого случая: /addlink <Текст> <ID группы> <Ссылка>
+        const regex1 = /^\/addlink <(.+?)> (-?\d+) (.+)$/; 
+        // Регулярное выражение для второго случая: /addlink <Текст> <Ссылка>
+        const regex2 = /^\/addlink <(.+?)> (.+)$/;
+
+        let match;
+
+        // Проверяем соответствие первому формату команды
+        if ((match = commandText.match(regex1)) && match.length === 4) {
+            const text = match[1].trim(); // Получаем текст (убираем лишние пробелы)
+            let groupId = match[2]; // Получаем ID группы
+            const link = match[3].trim(); // Получаем ссылку (убираем лишние пробелы)
+
+            // Если groupId начинается с "-", добавляем "100" после "-"
+            if (groupId.startsWith('-')) {
+                groupId = `${groupId.slice(0, 1)}100${groupId.slice(1)}`;
             }
+
+            const newLink = {
+                text: text, // Use extracted text
+                url: groupId, // Format URL for chat ID
+                value: link // Duplicate URL for value
+            };
+            console.log(newLink);
+            linkData.push(newLink);
+            // Выводим значения в чат
+            ctx.reply(`Текст: ${text}\nID группы: ${groupId}\nСсылка: ${link}`);
+        }
+        // Проверяем соответствие второму формату команды
+        else if ((match = commandText.match(regex2)) && match.length === 3) {
+            const text = match[1].trim(); // Получаем текст (убираем лишние пробелы)
+            const link = match[2].trim(); // Получаем ссылку (убираем лишние пробелы)
+
+            const newLink = {
+                text: text,
+                url: link,
+                value: link // Duplicate URL for value
+            };
+            console.log(newLink);
+            linkData.push(newLink);
+            // Выводим значения в чат
+            ctx.reply(`Текст: ${text}\nСсылка: ${link}`);
         } else {
-            ctx.reply(`Пример команды(добавляем ссылку): /addlink <текст ссылки> https://t.me/ссылка или /addlink <текст ссылки> -1002126756144`);
+            ctx.reply('Неправильный формат команды. Используйте:\n/addlink <Текст> <ID группы> <Ссылка>\nили\n/addlink <Текст> <Ссылка>.');
         }
     } else {
         ctx.reply('У вас нет прав для выполнения этой команды.');
     }
 });
+
+
+
 
 bot.action('ready', async (ctx) => {
     await checkSubscriptions(ctx);
@@ -458,8 +447,7 @@ bot.command('help', (ctx) => {
     let helpText = 'Доступные команды:\n\n';
 
     if (isAdminUser) {
-        helpText += '/addlink <текст> https://сслыка - Добавить новую ссылку\n';
-        helpText += '/setlink 1 <текст> https://сслыка - Установить текст и ссылку для определенной кнопки(в данном случае для первой)\n';
+        helpText += '/addlink <текст> https://сслыка (если канал открытый канал), /addlink <текст> id https://сслыка (Если канал закрытый)  - Добавить новую ссылку\n';
         helpText += '/deletelink 1 - Удалить ссылку по её номеру (в данном случае первую)\n';
         helpText += '/setsource https://сслыка - Установить ссылку для трансляции\n';
         helpText += '/setbutton1 <текст> https://сслыка - Настроить первую кнопку\n';
