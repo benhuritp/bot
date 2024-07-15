@@ -37,12 +37,12 @@ let showButton2 = true;
 
 const urlPattern = /^(https?:\/\/[^\s/$.?#].[^\s]*)$/;
 
-let sourceLink = 'https://example.com/source';
+let sourceLink = 'https://t.me/+TTEu7-Cit7FmNmEy';
 let showLinks = false; // Переменная для отслеживания состояния отображения ссылок
 
 const adminUsername = 'Kopylash8';
 
-let welcomeText = 'Ласкаво просимо! Наразі трансляцій відсутні.';
+let welcomeText = 'Ласкаво просимо! Наразі трансляції відсутні.';
 let LinksText = 'Ласкаво просимо! Щоб дивитись пряму трансляцію матчу, потрібно підписатись на всі канали нижче:';
 let sourceLinkText = "Дивитися трансляцiю"
 
@@ -59,8 +59,6 @@ function extractChatIdFromUrl(url) {
 }
 
 // Функция для проверки подписки пользователя на все каналы
-
-// Функция для проверки подписки пользователя на все каналы
 async function checkSubscriptions(ctx) {
     const user = ctx.from.id; // Получаем ID пользователя
 
@@ -69,6 +67,9 @@ async function checkSubscriptions(ctx) {
         ctx.reply("Ссылок нет.");
         return;
     }
+
+    // Создаем новый массив для хранения ссылок на каналы, которые бот может проверять
+    const validLinks = [];
 
     const promises = linkData.map(async (link) => {
         let chatId;
@@ -82,20 +83,25 @@ async function checkSubscriptions(ctx) {
             try {
                 let chatMember;
                 if (chatId.startsWith('-')) {
-                    // console.log( await ctx.telegram.getChatMember("-1002192351032", user));
                     chatMember = await ctx.telegram.getChatMember(chatId, user);
                 } else {
                     chatMember = await ctx.telegram.getChatMember(`@${chatId}`, user);
                 }
 
                 if (chatMember && ['member', 'administrator', 'creator'].includes(chatMember.status)) {
-                    return true; // Пользователь подписан на канал
+                    validLinks.push(link); // Пользователь подписан на канал
+                    return true;
                 } else {
                     return false; // Пользователь не подписан на канал
                 }
             } catch (error) {
-                console.error(`Ошибка при проверке подписки на канал ${chatId}:`, error);
-                return false; // Ошибка при проверке подписки
+                if (error.response && error.response.error_code === 403) {
+                    console.error(`Бот не является участником канала ${chatId}, удаляю ссылку на этот канал.`);
+                    return false; // Бот не является участником канала
+                } else {
+                    console.error(`Ошибка при проверке подписки на канал ${chatId}:`, error);
+                    return false; // Ошибка при проверке подписки
+                }
             }
         } else {
             console.error(`Не удалось извлечь username или ID из URL: ${link.url}`);
@@ -104,6 +110,9 @@ async function checkSubscriptions(ctx) {
     });
 
     const results = await Promise.all(promises);
+
+    // Обновляем linkData только с корректными ссылками
+    linkData = validLinks;
 
     if (results.every(subscribed => subscribed)) {
         ctx.reply(sourceText, Markup.inlineKeyboard([Markup.button.url(sourceLinkText, sourceLink)]));
